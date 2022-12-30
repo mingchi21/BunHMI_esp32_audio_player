@@ -1,16 +1,8 @@
 //**********************************************************************************************************
-//*    audioI2S-- I2S audiodecoder for ESP32,                                                              *
+//*    ESP32 Audio player with BunHMI,                                                              *
+//      Audio Output: MAX98357A
+//      For detail of BunHMI: https://shop.mcuidea.com
 //**********************************************************************************************************
-//
-// first release on 11/2018
-// Version 3  , Jul.02/2020
-//
-//
-// THE SOFTWARE IS PROVIDED "AS IS" FOR PRIVATE USE ONLY, IT IS NOT FOR COMMERCIAL USE IN WHOLE OR PART OR CONCEPT.
-// FOR PERSONAL USE IT IS SUPPLIED WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-// WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR
-// OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
 //
 
 #include "Arduino.h"
@@ -118,25 +110,15 @@ void setup() {
     }
     strncat(buff, PlayList[i], sizeof(buff) - strlen(buff));
   }
-  HMI_CMD("pl.options(\"%s\",0)", buff);
+  HMI_CMD("pl.options(\"%s\", 0)", buff);
   play_index = 0;
-
-  //    audio.connecttoFS(SD, "/320k_test.mp3");
-  //    audio.connecttoFS(SD, "test.wav");
-  //    audio.connecttohost("http://www.wdr.de/wdrlive/media/einslive.m3u");
-  //    audio.connecttohost("http://somafm.com/wma128/missioncontrol.asx"); //  asx
-  //    audio.connecttohost("http://mp3.ffh.de/radioffh/hqlivestream.aac"); //  128k aac
-
-  //audio.connecttohost("http://192.168.50.100:8880/mp3/Olsen-Banden.mp3");  //  128k mp3
-
-  //audio.connecttospeech("Hello world, nice to meet you", "en");
 
   // Init wifi
   HMI_CMD("labstat.text(\"Start Wifi...\")");
-
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid.c_str(), password.c_str());
   int cnt = 0;
+  // Connect to wifi AP
   while (WiFi.status() != WL_CONNECTED) {
     delay(100);
     HMI_CMD("labstat.text(\"Wifi Conn:%d...\")", (cnt++) / 10);
@@ -147,7 +129,7 @@ void setup() {
 }
 
 /**
-  * Description: Receive Hmi Data
+  * Description: Receive Data from HMI
   * Parameters:
   *  dat: Data buffer
   *  dat_len: Data buffer length
@@ -185,6 +167,7 @@ int rxHmiData(char *dat, int dat_len) {
   return 0;
 }
 
+// Start play music
 static void playMusic(int index)
 {
   char buff[256];
@@ -196,7 +179,7 @@ static void playMusic(int index)
   HMI_CMD("info.text(\"\")");
 }
 
-// BunHMI Print cmd
+// String from BunHMI ptr cmd
 const char *LOOP_ = "LOOP:";
 const char *VOLSW_ = "VOLSW:";
 const char *PL_ = "PL:";
@@ -204,7 +187,11 @@ const char *VOL_ = "VOL:";
 const char *PLAY_ = "PLAY:";
 const char *NEXT_ = "NEXT:";
 const char *PREV_ = "PREV:";
+const char *PAUSE_ = "PAUSE:";
 
+/**
+HMI Data handler
+*/
 void handleHmiData(const char *dat) {
   int val;
   char buff[256];
@@ -212,13 +199,7 @@ void handleHmiData(const char *dat) {
   //=========== Handle loop ======================
   if (strncmp(dat, LOOP_, strlen(LOOP_)) == 0) {
     val = strtoul(dat + strlen(LOOP_), NULL, 0);
-    if (val) {
-      play_loop = true;
-      digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-    } else {
-      play_loop = false;
-      digitalWrite(LED_BUILTIN, LOW);
-    }
+    audio.setFileLoop(val ? true : false);
     return;
   }
   //=========== Handle PL ======================
@@ -291,13 +272,12 @@ void handleHmiData(const char *dat) {
     return;
   }
 
-
-  //if (strncmp(dat, SLI_, strlen(SLI_)) == 0) {
-  //val = strtoul(dat + strlen(LED_), NULL, 0);
-  //int servo = map(val, 0, 100, 0, 180);     // scale it to use it with the servo (value between 0 and 180)
-  //myservo.write(servo);
-  //return;
-  //}
+    //=========== Handle PAUSE ======================
+  if (strncmp(dat, PAUSE_, strlen(PAUSE_)) == 0) {
+    // Only work for webstream or local file
+    audio.pauseResume();    
+    return;
+  }
 }
 
 
