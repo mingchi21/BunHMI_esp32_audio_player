@@ -19,8 +19,8 @@
 #define I2S_LRC 5
 
 Audio audio;
-String ssid = "mculab";
-String password = "24923150";
+String ssid = "mculab"; // Replace to your WiFi ssid
+String password = "24923150"; // Replace to your WiFi password
 
 #define EOT 0x04
 #define HMI Serial2
