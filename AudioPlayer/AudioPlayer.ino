@@ -19,8 +19,8 @@
 #define I2S_LRC 5
 
 Audio audio;
-String ssid = "mcuidea";
-String password = "02695813";
+String ssid = "mculab";
+String password = "24923150";
 
 #define EOT 0x04
 #define HMI Serial2
@@ -71,7 +71,7 @@ bool timer_tick(void *) {
         HMI_CMD("playTime.range(0,%d)", durationTime);
       }
       int curTime = audio.getAudioCurrentTime();
-      HMI_CMD("playTime.val(%d,0); labDur.text(\"%d/%d\")", curTime, curTime, durationTime);      
+      HMI_CMD("playTime.val(%d); labDur.text(\"%d/%d\")", curTime, curTime, durationTime);      
     }
   }
   return true;
@@ -98,8 +98,8 @@ void setup() {
   int init_vol = 12;
   audio.setVolume(init_vol);  // 0...21
   // Reset UI status
-  HMI_CMD("pl.options(\"\",0);playTime.val(0,0);cbloop.checked(0)");
-  HMI_CMD("vol.range(0,21);vol.val(%d,0)", init_vol);
+  HMI_CMD("pl.options(\"\");playTime.val(0);cbloop.checked(0)");
+  HMI_CMD("vol.range(0,21);vol.val(%d)", init_vol);
   HMI_CMD("imgPlay.src(%d)", IMG_ID_PLAY);
   // update playlist widget
   playlist_len = sizeof(PlayList) / sizeof(PlayList[0]);
@@ -110,7 +110,7 @@ void setup() {
     }
     strncat(buff, PlayList[i], sizeof(buff) - strlen(buff));
   }
-  HMI_CMD("pl.options(\"%s\", 0)", buff);
+  HMI_CMD("pl.options(\"%s\")", buff);
   play_index = 0;
 
   // Init wifi
@@ -175,8 +175,6 @@ static void playMusic(int index)
   snprintf(buff, sizeof(buff), "%s%s", MP3_URL, PlayList[index]);
   audio.connecttohost(buff);  
   durationTime = 0;
-  // Clear info text
-  HMI_CMD("info.text(\"\")");
 }
 
 // String from BunHMI ptr cmd
@@ -188,6 +186,7 @@ const char *PLAY_ = "PLAY:";
 const char *NEXT_ = "NEXT:";
 const char *PREV_ = "PREV:";
 const char *PAUSE_ = "PAUSE:";
+const char *SPK_ = "SPK:";
 
 /**
 HMI Data handler
@@ -213,10 +212,10 @@ void handleHmiData(const char *dat) {
   if (strncmp(dat, VOLSW_, strlen(VOLSW_)) == 0) {
     if (disp_volpanel) {
       // Hide panVol
-      HMI_CMD("panVol.anim_y(190, 200, 0,0,1)");
+      HMI_CMD("panVol.anim_y(190, 200, 0,1)");
     } else {
       // Show panVol
-      HMI_CMD("panVol.anim_y(130, 200, 0,0,1)");
+      HMI_CMD("panVol.anim_y(130, 200, 0,1)");
     }
     disp_volpanel = !disp_volpanel;
     return;
@@ -243,6 +242,14 @@ void handleHmiData(const char *dat) {
     }
     HMI_CMD("imgPlay.src(%d)", val);
     return;
+  }
+
+  if (strncmp(dat, SPK_, strlen(SPK_)) == 0) {
+    const char* tts = dat + strlen(SPK_);
+    if(strlen(tts) > 0){
+      audio.stopSong();
+      audio.connecttospeech(tts, "en");
+    }
   }
 
   //=========== Handle NEXT ======================
@@ -312,7 +319,6 @@ void audio_info(const char *info) {
 void audio_id3data(const char *info) {  //id3 metadata
   Serial.print("id3data     ");
   Serial.println(info);
-  HMI_CMD("info.add_text(\"%s\\n\")", info);
 }
 void audio_eof_mp3(const char *info) {  //end of file
   Serial.print("eof_mp3     ");
